@@ -21,7 +21,7 @@ async def print_battery(drone):
     async for battery in drone.telemetry.battery():
         print(f"Battery: {battery.remaining_percent}")
 
-
+    # Could take out
 async def print_gps_info(drone):
     async for gps_info in drone.telemetry.gps_info():
         print(f"GPS info: {gps_info}")
