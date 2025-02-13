@@ -24,14 +24,15 @@ async def run():
             pygame.event.pump()  # Process events
 
             # Read joystick axes (adjust indices based on your joystick)
-            roll = int(joystick.get_axis(0)*10000)  # Typically axis 0 for roll
-            pitch = int(joystick.get_axis(1))*1000  # Typically axis 1 for pitch
+            roll = int(joystick.get_axis(0)*1000)  # Typically axis 0 for roll
+            pitch = int(joystick.get_axis(1)*1000)  # Typically axis 1 for pitch
             throttle = int(joystick.get_axis(2)*1000)  # Typically axis 2 for throttle
             yaw = int(joystick.get_axis(3)*1000)  # Typically axis 3 for yaw
 
             # Send control commands over LoRa
-            command = f"{roll}/{pitch}/{throttle}/{yaw}\n"
+            command = f"{throttle}/{yaw}/{pitch}/{roll}\n"
             await sendMessage(command, 1, writer)
+            print("Sent: " + command)
 
             # Receive and print incoming messages
             
@@ -43,17 +44,10 @@ async def run():
             except TimeoutError:
                 print("Receiver Timeout... Continuing")
                 numTimeouts+=1
-                continue
+                pass
             except:
                 print("Malformed Data")
-                continue
-            print("debug")
-            
-            
-            
-
-            
-
+                pass
 
     
     except KeyboardInterrupt:
