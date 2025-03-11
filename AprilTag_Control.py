@@ -4,6 +4,7 @@ from picamera2 import Picamera2
 import numpy as np
 import math
 import asyncio
+from simple_pid import PID #pip install simple-pid
 from mavsdk import System
 import mavsdk.offboard
 
