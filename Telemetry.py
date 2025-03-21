@@ -15,9 +15,15 @@ async def run():
 			
 	print("Arming the drone...")
 	await drone.action.arm()
-	
-	print("Starting manual control...")
-	await drone.manual_control.start_position_control()
+
+	async.sleep(2)
+	print("Disarming the drone...")
+	await drone.action.disarm()
+
+
+	""" COMMENTED OUT FOR TESTING
+ 	print("Starting manual control...")
+	await drone.manual_control.start_position_control()"""
 
     # Start the tasks, Commented out for now to make testing easier
     #asyncio.ensure_future(print_battery(drone))
@@ -25,6 +31,7 @@ async def run():
     #asyncio.ensure_future(print_in_air(drone))
     #asyncio.ensure_future(print_position(drone))
     
+    """ COMMENTED OUT FOR TESING
     control_task = asyncrio.create_task(control_drone(drone))
     try:
 		await asyncio.Event().wait()
@@ -38,7 +45,7 @@ async def run():
 		print("Stopping manual control...")
 		await drone.manual_control.stop_position_control()
 		print("Landing...")
-		await drone.action.land()
+		await drone.action.land()"""
 
 async def control_drone(drone):
 	while True:
