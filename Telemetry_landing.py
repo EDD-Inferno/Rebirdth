@@ -45,9 +45,9 @@ async def run():
         await drone.action.disarm()
         return
 
-    print("-- Turn clock-wise and climb")
+    print("-- climb")
     await drone.offboard.set_velocity_body(
-        VelocityBodyYawspeed(0.0, 0.0, -1.0, 0.0))
+        VelocityBodyYawspeed(0.0, 0.0, -1.5, 0.0))
     await asyncio.sleep(10)
 
     print("-- Wait for a bit")
@@ -57,7 +57,17 @@ async def run():
 
     print("-- forward")
     await drone.offboard.set_velocity_body(
-        VelocityBodyYawspeed(1.0, 0.0, 0.0, 0.0))
+        VelocityBodyYawspeed(0.5, 0.0, 0.0, 0.0))
+    await asyncio.sleep(5)
+
+    print("-- Wait for a bit")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(0.0, 0.5, 0.0, 0.0))
+    await asyncio.sleep(5)
+
+    print("-- forward")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(0.5, 0.0, 0.0, 0.0))
     await asyncio.sleep(5)
 
     print("-- Wait for a bit")

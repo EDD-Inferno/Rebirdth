@@ -41,13 +41,17 @@ while True:
             # Calculate the center of the marker (average of corner points)
             marker_center = np.mean(corner[0], axis=0)
 
-            # Calculate the Euclidean distance from the marker center to the frame center
-            distance = np.linalg.norm(marker_center - frame_center)
+            # Calculate the error (x and y distance) from the marker center to the frame center
+            x_error = marker_center[0] - frame_center[0]
+            y_error = marker_center[1] - frame_center[1]
 
-            # Draw a circle at the marker center and display the distance error
+            # Print the X and Y error
+            print(f"X Error: {x_error:.2f}, Y Error: {y_error:.2f}")
+
+            # Draw a circle at the marker center and display the X, Y error
             marker_center = tuple(np.int32(marker_center))
             cv2.circle(frame, marker_center, 5, (0, 255, 0), -1)
-            cv2.putText(frame, f"Dist: {distance:.2f}", marker_center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, f"X: {x_error:.2f}, Y: {y_error:.2f}", marker_center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     # Display the frame with ArUco markers
     cv2.imshow("H.264 Stream with ArUco Detection", frame)
