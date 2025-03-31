@@ -1,7 +1,8 @@
 import asyncio
-from mavsdk import system
+from mavsdk import System
+from mavsdk.offboard import (OffboardError, VelocityBodyYawspeed)
 
-async def run(){
+async def run():
  # Init the drone 
     drone = System()
     await drone.connect(system_address="udp://:14540")
@@ -30,11 +31,39 @@ async def run(){
     print("-- Arming")
     await drone.action.arm()
 
-    print("-- Taking off")
-    await drone.action.set_takeoff_altitude(10.0)
-    await drone.action.takeoff()
+    print("-- Setting initial setpoint")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
 
+    print("-- Starting offboard")
+    try:
+        await drone.offboard.start()
+    except OffboardError as error:
+        print(f"Starting offboard mode failed with error code: \
+              {error._result.result}")
+        print("-- Disarming")
+        await drone.action.disarm()
+        return
+
+    print("-- Turn clock-wise and climb")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(0.0, 0.0, -1.0, 0.0))
     await asyncio.sleep(10)
+
+    print("-- Wait for a bit")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+    await asyncio.sleep(5)
+
+    print("-- forward")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(1.0, 0.0, 0.0, 0.0))
+    await asyncio.sleep(5)
+
+    print("-- Wait for a bit")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+    await asyncio.sleep(5)
 
     print("-- Landing")
     await drone.action.land()
