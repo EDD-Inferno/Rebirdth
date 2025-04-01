@@ -52,11 +52,11 @@ async def precision_landing(drone):
     
     # Create PID controllers for X and Y axes.
     # NOTE: You must tune these gains based on your system.
-    pid_x = PID(kp=0.0005, ki=0.0000, kd=0.0005, dt=0.1)
-    pid_y = PID(kp=0.0005, ki=0.0000, kd=0.0005, dt=0.1)
+    pid_x = PID(kp=0.001, ki=0.0000, kd=0.0005, dt=0.1)
+    pid_y = PID(kp=0.001, ki=0.0000, kd=0.0005, dt=0.1)
 
     # Threshold in pixels under which we consider the drone to be aligned
-    threshold = 10
+    threshold = 5
 
     aligned_counter = 0
     required_alignments = 10  # Require several consecutive frames to confirm alignment
@@ -206,7 +206,7 @@ async def run():
     # Execute initial maneuvers: climb while turning
     print("-- climb")
     await drone.offboard.set_velocity_body(
-        VelocityBodyYawspeed(0.0, 0.0, -1, 0.0))
+        VelocityBodyYawspeed(0.0, 0.0, -1, 30.0))
     await asyncio.sleep(10)
 
     print("-- Wait for a bit")
