@@ -1,5 +1,5 @@
 import asyncio
-from rylr import RYLR
+from Transceiver.rylr import RYLR
 
 async def main():
     rylr = RYLR('/dev/ttyUSB0')
