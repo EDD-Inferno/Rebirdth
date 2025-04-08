@@ -43,19 +43,20 @@ async def precision_landing(drone):
     picam2.start()
 
     # Set up the ArUco detector
-    aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters_create()
-    
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    aruco_params = cv2.aruco.DetectorParameters()
+    detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+
     # Create PID controllers for X and Y axes.
     # NOTE: You must tune these gains based on your system.
-    pid_x = PID(kp=0.001, ki=0.0000, kd=0.0005, dt=0.1)
-    pid_y = PID(kp=0.001, ki=0.0000, kd=0.0005, dt=0.1)
+    pid_x = PID(kp=0.0005, ki=0.0000, kd=0.0005, dt=0.1)
+    pid_y = PID(kp=0.0005, ki=0.0000, kd=0.0005, dt=0.1)
 
     # Threshold in pixels under which we consider the drone to be aligned
     threshold = 15
 
     aligned_counter = 0
-    required_alignments = 10  # Require several consecutive frames to confirm alignment
+    required_alignments = 20  # Require several consecutive frames to confirm alignment
 
     while True:
         # Read frame in a non-blocking way
@@ -69,7 +70,7 @@ async def precision_landing(drone):
         frame_center = (frame_width // 2, frame_height // 2)
 
         # Detect ArUco markers in the frame
-        corners, ids, _ = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
+        corners, ids, _ = detector.detectMarkers(frame)
         if corners and len(corners) > 0:
             # Assume the first detected marker is our target
             marker_corners = corners[0]
@@ -106,11 +107,6 @@ async def precision_landing(drone):
             else:
                 aligned_counter = 0
 
-            # Display the frame (optional, comment out if running headless)
-            cv2.imshow("Precision Landing", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
             # If aligned for several consecutive frames, exit loop and initiate landing.
             if aligned_counter >= required_alignments:
                 print("Marker aligned! Initiating landing...")
@@ -121,9 +117,6 @@ async def precision_landing(drone):
             print("-- No Marker, Landing")
             await drone.action.land()
             # Optionally show frame as is
-            cv2.imshow("Precision Landing", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
 
     cv2.destroyAllWindows()
     return
@@ -165,7 +158,7 @@ async def run():
 
     # Initialize the drone
     drone = System()
-    await drone.connect(system_address="udp://:14540")
+    await drone.connect(system_address="serial:///dev/ttyS0:57600")
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
         if state.is_connected:
@@ -201,8 +194,8 @@ async def run():
     # Execute initial maneuvers: climb while turning
     print("-- climb")
     await drone.offboard.set_velocity_body(
-        VelocityBodyYawspeed(0.0, 0.0, -1, 30.0))
-    await asyncio.sleep(5)
+        VelocityBodyYawspeed(0.0, 0.0, -1, 0))
+    await asyncio.sleep(7)
 
     print("-- Wait for a bit")
     await drone.offboard.set_velocity_body(
@@ -212,16 +205,19 @@ async def run():
     print("-- forward & side")
     await drone.offboard.set_velocity_body(
         VelocityBodyYawspeed(0.5, 0.5, 0.0, 0.0))
-    await asyncio.sleep(2.5)
+    await asyncio.sleep(3)
 
     print("-- Wait for a bit")
     await drone.offboard.set_velocity_body(
         VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
     await asyncio.sleep(5)
 
+    
     # Call precision landing routine using computer vision and PID control
-    await precision_landing(drone)
-
+    try:
+        await precision_landing(drone)
+    except Exception as e:
+        drone.action.land()
     # Finally, command the drone to land
     print("-- Landing")
     await drone.action.land()
