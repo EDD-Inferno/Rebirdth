@@ -113,7 +113,10 @@ async def precision_landing(drone):
                 break
 
         else:
-            # If no marker is detected, hover in place (or add a search behavior)
+            # If no marker is detected, hover in place before landing
+            print("-- No Marker, Hovering")
+            await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+            await asyncio.sleep(3) #delay placeholder for until we add an apriltag search function (?)
             print("-- No Marker, Landing")
             await drone.action.land()
             # Optionally show frame as is
