@@ -57,6 +57,7 @@ async def precision_landing(drone):
 
     aligned_counter = 0
     required_alignments = 20  # Require several consecutive frames to confirm alignment
+    failed_detection_counter = 0
 
     while True:
         # Read frame in a non-blocking way
@@ -72,6 +73,7 @@ async def precision_landing(drone):
         # Detect ArUco markers in the frame
         corners, ids, _ = detector.detectMarkers(frame)
         if corners and len(corners) > 0:
+            failed_detection_counter = 0
             # Assume the first detected marker is our target
             marker_corners = corners[0]
             # Compute the center of the marker (average of its corner points)
@@ -116,7 +118,9 @@ async def precision_landing(drone):
             # If no marker is detected, hover in place before landing
             print("-- No Marker, Hovering")
             await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
-            await asyncio.sleep(3) #delay placeholder for until we add an apriltag search function (?)
+            failed_detection_counter += 1
+            if (failed_detection_counter == 10):
+                continue
             print("-- No Marker, Landing")
             await drone.action.land()
             # Optionally show frame as is
