@@ -49,10 +49,10 @@ async def precision_landing(drone):
 
     # Create PID controllers for X and Y axes.
     # NOTE: You must tune these gains based on your system.
-    pid_x = PID(kp=0.0005, ki=0.0000, kd=0.0005, dt=0.1)
-    pid_y = PID(kp=0.0005, ki=0.0000, kd=0.0005, dt=0.1)
+    pid_x = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
+    pid_y = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
 
-    # Threshold in pixels under which we consider the drone to be aligned
+   # Threshold in pixels under which we consider the drone to be aligned
     threshold = 15
 
     aligned_counter = 0
@@ -106,8 +106,10 @@ async def precision_landing(drone):
             # Check if errors are within the threshold.
             if abs(error_x) < threshold and abs(error_y) < threshold:
                 aligned_counter += 1
+                print(f'Aligned Counter: {aligned_counter}')
             else:
                 aligned_counter = 0
+                print('Aligned Counter Reset')
 
             # If aligned for several consecutive frames, exit loop and initiate landing.
             if aligned_counter >= required_alignments:
@@ -120,11 +122,10 @@ async def precision_landing(drone):
             await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
             failed_detection_counter += 1
             if (failed_detection_counter == 10):
-                continue
-            print("-- No Marker, Landing")
-            await drone.action.land()
+                print("-- No Marker, Landing")
+                await drone.action.land()
             # Optionally show frame as is
-
+            print("Failed Detection Counter: " + str(failed_detection_counter))
     cv2.destroyAllWindows()
     return
 
