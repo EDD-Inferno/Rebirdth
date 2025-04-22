@@ -5,28 +5,53 @@ from mavsdk import System
 from mavsdk.offboard import OffboardError, VelocityBodyYawspeed
 
 # --- PID Controller Class ---
+import asyncio
+import cv2
+import numpy as np
+import math
+from mavsdk import System
+from mavsdk.offboard import OffboardError, VelocityBodyYawspeed
+
+# --- PID Controller Class ---
 class PID:
-    def __init__(self, kp, ki, kd, dt=0.1, integral_limit=100):
+    def __init__(self, kp: float, ki: float, kd: float, dt: float=0.1, integral_limit: float=100, derivative_noise_frequency=50):
+        """
+        @param kp kp
+        @param ki ki
+        @param kd kd
+        @param dt change in time between iterations
+        @param integral_limit maximum integral value
+        @param derivative_noise_frequency: frequency of oscillations in the derivative term (take the fft of the error signal and then set this to the most prominent high frequency)
+        """
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.dt = dt
-        self.integral = 0.0
-        self.prev_error = 0.0
         self.integral_limit = integral_limit
+    
+        self.prev_error = float("NaN")
+        self._integral = 0.0
+        self._derivative = 0.0
+        self._derivative_alpha = dt * derivative_noise_frequency / (1. + dt * derivative_noise_frequency)
 
     def update(self, error):
         # Proportional term
         p = self.kp * error
 
         # Integral term with anti-windup
-        self.integral += error * self.dt
-        # Clamp the integral to avoid windup
-        self.integral = max(min(self.integral, self.integral_limit), -self.integral_limit)
-        i = self.ki * self.integral
+        if (error > 0) != (self.prev_error > 0):
+            # reset on sign crossing
+            self._integral = 0
+        else:
+            self._integral += error
+            # Clamp the integral to avoid windup
+            self._integral = max(min(self._integral, self.integral_limit), -self.integral_limit)
+        
+        i = self.ki * self._integral * dt
 
         # Derivative term
-        d = self.kd * (error - self.prev_error) / self.dt
+        self._derivative += ((error - self.prev_error) - self._derivative) * self._derivative_alpha
+        d = self.kd * self._derivative / self.dt
         self.prev_error = error
 
         # PID output
