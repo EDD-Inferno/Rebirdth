@@ -32,9 +32,12 @@ class PID:
         self.prev_error = float("NaN")
         self._integral = 0.0
         self._derivative = 0.0
-        self._derivative_alpha = dt * derivative_noise_frequency / (1. + dt * derivative_noise_frequency)
+        self._derivative_alpha = dt * derivative_noise_frequency / (1.0 + dt * derivative_noise_frequency)
 
     def update(self, error):
+        if (math.isnan(this.prev_error)):
+            self.prev_error = error
+        
         # Proportional term
         p = self.kp * error
 
