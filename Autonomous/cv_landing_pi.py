@@ -48,7 +48,7 @@ class PID:
             # Clamp the integral to avoid windup
             self._integral = max(min(self._integral, self.integral_limit), -self.integral_limit)
         
-        i = self.ki * self._integral * dt
+        i = self.ki * self._integral * self.dt
 
         # Derivative term
         self._derivative += ((error - self.prev_error) - self._derivative) * self._derivative_alpha
@@ -145,12 +145,13 @@ async def precision_landing(drone):
             # If no marker is detected, hover in place before landing
             print("-- No Marker, Hovering")
             await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
-            failed_detection_counter += 1
             if (failed_detection_counter == 10):
                 print("-- No Marker, Landing")
                 await drone.action.land()
             # Optionally show frame as is
-            print("Failed Detection Counter: " + str(failed_detection_counter))
+            else:
+                failed_detection_counter += 1  
+                print("Failed Detection Counter: " + str(failed_detection_counter))
     cv2.destroyAllWindows()
     return
 
@@ -228,29 +229,29 @@ async def run():
     print("-- climb")
     await drone.offboard.set_velocity_body(
         VelocityBodyYawspeed(0.0, 0.0, -1, 0))
-    await asyncio.sleep(7)
+    await asyncio.sleep(10)
 
     print("-- Wait for a bit")
     await drone.offboard.set_velocity_body(
         VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
     await asyncio.sleep(5)
 
-    print("-- forward & side")
-    await drone.offboard.set_velocity_body(
-        VelocityBodyYawspeed(0.5, 0.5, 0.0, 0.0))
-    await asyncio.sleep(3)
+    # # print("-- forward & side")
+    # # await drone.offboard.set_velocity_body(
+    # #     VelocityBodyYawspeed(0.5, 0.5, 0.0, 0.0))
+    # # await asyncio.sleep(3)
 
-    print("-- Wait for a bit")
-    await drone.offboard.set_velocity_body(
-        VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
-    await asyncio.sleep(5)
+    # print("-- Wait for a bit")
+    # await drone.offboard.set_velocity_body(
+    #     VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+    # await asyncio.sleep(5)
 
     
     # Call precision landing routine using computer vision and PID control
     try:
         await precision_landing(drone)
     except Exception as e:
-        drone.action.land()
+        print(f'ERROR: {e}')
     # Finally, command the drone to land
     print("-- Landing")
     await drone.action.land()
