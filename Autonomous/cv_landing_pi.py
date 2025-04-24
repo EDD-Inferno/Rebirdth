@@ -15,7 +15,7 @@ from mavsdk.offboard import OffboardError, VelocityBodyYawspeed
 
 # --- PID Controller Class ---
 class PID:
-    def __init__(self, kp: float, ki: float, kd: float, dt: float=0.1, integral_limit: float=100, derivative_noise_frequency=50):
+    def __init__(self, kp: float, ki: float, kd: float, dt: float=0.1, integral_limit: float=100, derivative_noise_frequency: float=50.0):
         """
         @param kp kp
         @param ki ki
@@ -36,6 +36,9 @@ class PID:
         self._derivative_alpha = dt * derivative_noise_frequency / (1. + dt * derivative_noise_frequency)
 
     def update(self, error):
+        if (math.isnan(this.prev_error)):
+            self.prev_error = error
+        
         # Proportional term
         p = self.kp * error
 
