@@ -36,7 +36,7 @@ class PID:
         self._derivative_alpha = dt * derivative_noise_frequency / (1. + dt * derivative_noise_frequency)
 
     def update(self, error):
-        if (math.isnan(this.prev_error)):
+        if (math.isnan(self.prev_error)):
             self.prev_error = error
         
         # Proportional term
@@ -255,6 +255,7 @@ async def run():
         await precision_landing(drone)
     except Exception as e:
         print(f'ERROR: {e}')
+        drone.action.land()
     # Finally, command the drone to land
     print("-- Landing")
     await drone.action.land()
