@@ -86,7 +86,7 @@ async def precision_landing(drone):
     aligned_counter = 0
     required_alignments = 20  # Require several consecutive frames to confirm alignment
     failed_detection_counter = 0
-
+    iteration = 0
     while True:
         # Read frame in a non-blocking way
         frame = picam2.capture_array()
@@ -155,6 +155,11 @@ async def precision_landing(drone):
             else:
                 failed_detection_counter += 1  
                 print("Failed Detection Counter: " + str(failed_detection_counter))
+        if(iteration % 10 ==0):
+            # Show the frame with detected markers
+            cv2.imwrite("~/Rebirdth/Frames/", frame)
+        iteration +=1
+
     cv2.destroyAllWindows()
     return
 
