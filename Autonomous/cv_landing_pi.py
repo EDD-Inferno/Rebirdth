@@ -77,8 +77,8 @@ async def precision_landing(drone):
 
     # Create PID controllers for X and Y axes.
     # NOTE: You must tune these gains based on your system.
-    pid_x = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
-    pid_y = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
+    pid_x = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+    pid_y = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
 
    # Threshold in pixels under which we consider the drone to be aligned
     threshold = 15
@@ -135,7 +135,7 @@ async def precision_landing(drone):
             if abs(error_x) < threshold and abs(error_y) < threshold:
                 aligned_counter += 1
                 print(f'Aligned Counter: {aligned_counter}')
-            else:
+            elif aligned_counter != 0:
                 aligned_counter = 0
                 print('Aligned Counter Reset')
 
