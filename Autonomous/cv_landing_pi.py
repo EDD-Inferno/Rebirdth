@@ -87,6 +87,13 @@ async def precision_landing(drone):
     required_alignments = 20  # Require several consecutive frames to confirm alignment
     failed_detection_counter = 0
     iteration = 0
+
+    # Parameters for drone descent
+    camFOV = math.radians(75)
+    safety_factor = 1.5
+    tag_size = 0.183 #Size of AprilTag in meters
+    tag_circumradius = tag_size * math.sqrt(2)/2
+    max_descent_rate = 0.5 #m/s
     while True:
         # Read frame in a non-blocking way
         frame = picam2.capture_array()
