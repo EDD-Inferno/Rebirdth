@@ -1,0 +1,97 @@
+[] - denotes parameters
+() - denotes comments
+Launch 1
+{
+  UI for drone readings before Launch
+  {
+    Battery
+    Altitude
+    Gyro reading
+    Flight Mode
+
+    Camera Vision active
+    Magnet
+  }
+  
+  Launch Sequence
+  {
+    Ensure nosecone prop orientation
+    Rocket launches
+    if (termination signal received)
+    {
+      record termination altitude
+      deploy airbreak system
+    }
+    if (apogee near, determined by velocity (everything going upwards at around 5 mph))
+    {
+      Droge_Engagement_in_air()
+      while altitude is changing
+      {
+        wait 3 seconds
+        continue
+      }
+      record final altitude
+      if (termination signal)
+      {
+        penalty = final altitude - termination altitude
+      }
+    }
+  }
+
+  Drone Engagement in air
+  {
+    Enter normal drone prop orientation 
+    Change propeller speed and whatnot depending on current drone velocity. Ensure the drone floats
+  }
+
+  Drone fly near dropoff tags
+  {
+    Do whatever terrain survey sequence we're implementing (GPS if desperate, Comically large apriltag, circles, loops, line)
+    Find and locate first dropoff tags
+    DronePrecisionLanding(minaltitude)
+    if (drone is safely over trash can, determined by pilots/field people)
+    {
+      Disengage rocket magnet
+    }
+    else
+    {
+      Engage onboard/manual control 
+      manually fly drone safely over trash can
+      Disengage rocket magnet manually
+      Disengage onboard/manual control and continue autonomous mission sequence (fly over rocket 2)
+    }
+  }
+
+  Fly over rocket 2 (terrain survey)
+  {
+    Switch to manual control when drone is close enough to tag center (necessary to engage magnet)
+  }
+
+  Drone Precision Landing [parameter - minaltitude]
+  {
+    Stop descent at minaltitude
+  }
+
+  Drone/rocket magnet engage
+  {
+
+  }
+}
+
+Launch 2
+{
+  Launch Sequence 2
+  {
+
+  }
+
+  Dronge Engagement in air 2 
+  {
+
+  }
+
+  Descent and Land 2
+  {
+    (Landing needs to be stable. Too fast and the rocket fins will break. Too slow and the rocket is likely to tip over and break the props)
+  }
+}
