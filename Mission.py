@@ -129,17 +129,17 @@ async def run():
     
     #Align to Receiver AprilTag
     try:
-        await cv_landing_pi.precision_landing(drone)
+        await cv_landing_pi.precision_landing(drone, True)
     except Exception as e:
         print(f'ERROR: {e}')
     await wait_for_enter()
     GPIO.output(MOSFET_PIN, GPIO.LOW)
 
-    #GPS To Other Apriltag
+    # GPS To Other Apriltag
 
     # Call precision landing routine using computer vision and PID control
     try:
-        await cv_landing_pi.precision_landing(drone)
+        await cv_landing_pi.precision_landing(drone, False)
     except Exception as e:
         print(f'ERROR: {e}')
         drone.action.land()

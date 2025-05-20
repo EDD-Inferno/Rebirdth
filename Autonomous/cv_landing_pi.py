@@ -63,7 +63,7 @@ class PID:
 
 # --- Precision Landing Routine ---
 ## alt_threshold 
-async def precision_landing(drone, alt_threshold=0.5):
+async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
     print("-- Starting precision landing using ArUco marker and PID")
     
     # Initialize camera
@@ -78,9 +78,14 @@ async def precision_landing(drone, alt_threshold=0.5):
 
     # Create PID controllers for X and Y axes.
     # NOTE: You must tune these gains based on your system.
-    pid_x = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
-    pid_y = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
-    pid_z = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
+    if not(with_rocket): 
+        pid_x = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+        pid_y = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+        pid_z = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
+    else: 
+        pid_x = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+        pid_y = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+        pid_z = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
 
    # Threshold in pixels under which we consider the drone to be aligned
     threshold = 15 # pixels
