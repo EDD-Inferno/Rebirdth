@@ -4,8 +4,13 @@ import numpy as np
 from mavsdk import System
 from mavsdk.offboard import OffboardError, VelocityBodyYawspeed
 from picamera2 import Picamera2
+import RPi.GPIO as GPIO
+import keyboard
 
 from Autonomous import cv_landing_pi
+
+#--- GPIO Definitions ---
+MOSFET_PIN = 17 #TODO: put the correct pin #
 
 # --- Helper functions for telemetry ---
 altitude = None
@@ -80,6 +85,13 @@ async def armDrone():
         VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
     await asyncio.sleep(5)
 
+async def wait_for_enter():
+    while True:
+        if keyboard.is_pressed('enter'):
+            print("Enter Key Was Pressed")
+            break
+        await asyncio.sleep(0.1)
+
 # --- Main function ---
 async def run():
     # Initialize the drone
@@ -87,6 +99,10 @@ async def run():
     global termination_task
 
     drone = System()
+
+    #Turn on Electromagnets
+    GPIO.output(MOSFET_PIN, GPIO.HIGH)
+
     initDrone()
 
 ################### Prints before launch #########################
@@ -110,8 +126,16 @@ async def run():
     #     if (apogee near, determined by velocity (everything going upwards at around 5 mph))
     #     {
     armDrone()
-    # Add check until stable?
-    #       record final altitude    
+    
+    #Align to Receiver AprilTag
+    try:
+        await cv_landing_pi.precision_landing(drone)
+    except Exception as e:
+        print(f'ERROR: {e}')
+    await wait_for_enter()
+    GPIO.output(MOSFET_PIN, GPIO.LOW)
+
+    #GPS To Other Apriltag
 
     # Call precision landing routine using computer vision and PID control
     try:
