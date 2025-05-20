@@ -52,7 +52,6 @@ async def initDrone():
     print_altitude_task = asyncio.create_task(print_altitude(drone))
     print_flight_mode_task = asyncio.create_task(print_flight_mode(drone))
     running_tasks = [print_altitude_task, print_flight_mode_task]
-    global termination_task
     termination_task = asyncio.create_task(observe_is_in_air(drone, running_tasks))
 
     # Wait until the drone is ready to fly
@@ -85,14 +84,34 @@ async def armDrone():
 async def run():
     # Initialize the drone
     global drone 
+    global termination_task
+
     drone = System()
     initDrone()
 
-
-
-    armDrone()
+################### Prints before launch #########################
+    #     Battery
+    #     Altitude
+    #     Gyro reading
+    #     Flight Mode
+    #     Camera Vision active
+    #     Magnet Engagement
     
+###################### Launch Ready Checks #############################
+    #   { 
+    #     Gyro orientation
+    #     Drone connection
+    #     Magnet engagement
+    #     Battery
 
+####################  During Launch #####################################3
+    #       record termination altitude
+    #     
+    #     if (apogee near, determined by velocity (everything going upwards at around 5 mph))
+    #     {
+    armDrone()
+    # Add check until stable?
+    #       record final altitude    
 
     # Call precision landing routine using computer vision and PID control
     try:
