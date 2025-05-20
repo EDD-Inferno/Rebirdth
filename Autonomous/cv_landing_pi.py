@@ -62,7 +62,8 @@ class PID:
         return p + i + d
 
 # --- Precision Landing Routine ---
-async def precision_landing(drone):
+## alt_threshold 
+async def precision_landing(drone, alt_threshold=0.5):
     print("-- Starting precision landing using ArUco marker and PID")
     
     # Initialize camera
@@ -79,9 +80,10 @@ async def precision_landing(drone):
     # NOTE: You must tune these gains based on your system.
     pid_x = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
     pid_y = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+    pid_z = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
 
    # Threshold in pixels under which we consider the drone to be aligned
-    threshold = 15
+    threshold = 15 # pixels
 
     aligned_counter = 0
     required_alignments = 20  # Require several consecutive frames to confirm alignment
@@ -91,10 +93,16 @@ async def precision_landing(drone):
     # Parameters for drone descent
     camFOV = math.radians(75)
     safety_factor = 1.5
-    tag_size = 0.183 #Size of AprilTag in meters
+    tag_size = 0.183 # Length/Width of AprilTag in meters
     tag_circumradius = tag_size * math.sqrt(2)/2
     max_descent_rate = 0.5 #m/s
+    error_z = None
+
+    # Original Function: safety_factor * (dist_to_tag + tag_circumradius) * (1 / math.tan(half_camFOV))
+    min_altitude_calc_const = safety_factor * safety_factor * tag_circumradius * (1 / math.tan(camFOV / 2.0))
+
     while True:
+        use_altitude_reading = altitude != None or altitude == 0.0
         # Read frame in a non-blocking way
         frame = picam2.capture_array()
         if frame is None:
@@ -118,11 +126,24 @@ async def precision_landing(drone):
             # Calculate errors in X and Y (in pixels)
             error_x = marker_center[0] - frame_center[0]
             error_y = marker_center[1] - frame_center[1]
+            if use_altitude_reading:
+                horizon_dist_to_tag = math.sqrt(error_x**2 + error_y**2)
+                min_altitude = horizon_dist_to_tag * min_altitude_calc_const
+                print(f'UnclampedMinAlt: {min_altitude} Alt: {altitude}')
+                min_altitude = max(min_altitude, 0.5) 
+                min_altitude = min(min_altitude, 20)
+                
+                error_z = altitude - min_altitude
             
             # PID correction outputs (mapping pixel error to m/s command, adjust gains as needed)
             control_x = pid_x.update(error_x)  # Negative sign if image x error is opposite to drone's right movement
             control_y = pid_y.update(error_y)  # Adjust sign based on camera mounting and coordinate frame
-            print(control_x, control_y)
+            if use_altitude_reading:
+                control_z = pid_z.update(error_z)  # Adjust sign based on camera mounting and coordinate frame
+            else: 
+                control_z = 0.0
+
+            print(f'Velocities X: {control_x} Y: {control_y} Z: {control_z}')
             # Draw marker and error information on frame (for debugging)
             frame = cv2.aruco.drawDetectedMarkers(frame, corners, ids)
             cv2.circle(frame, marker_center, 5, (0, 255, 0), -1)
@@ -130,16 +151,18 @@ async def precision_landing(drone):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             cv2.putText(frame, f"ErrY: {error_y:.1f}", (marker_center[0]+10, marker_center[1]+15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, f"ErrZ: {error_z:.1f}", (altitude, min_altitude),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
             # Command the drone with the computed corrections.
             # Here, control_x adjusts forward/backward and control_y adjusts left/right.
             # We keep vertical velocity zero as we want to continue descending by landing command.
             await drone.offboard.set_velocity_body(
-                VelocityBodyYawspeed(control_x, control_y, 0.0, 0.0)
+                VelocityBodyYawspeed(control_x, control_y, control_z, 0.0)
             )
 
             # Check if errors are within the threshold.
-            if abs(error_x) < threshold and abs(error_y) < threshold:
+            if abs(error_x) < threshold and abs(error_y) < threshold and abs(error_z) < alt_threshold:
                 aligned_counter += 1
                 print(f'Aligned Counter: {aligned_counter}')
             elif aligned_counter != 0:
@@ -171,12 +194,14 @@ async def precision_landing(drone):
     return
 
 # --- Helper functions for telemetry ---
+altitude = None
 async def print_altitude(drone):
     previous_altitude = None
     async for position in drone.telemetry.position():
-        altitude = round(position.relative_altitude_m)
-        if altitude != previous_altitude:
-            previous_altitude = altitude
+        altitude = position.relative_altitude_m
+        altitudeRound = round(altitude)
+        if altitudeRound != previous_altitude:
+            previous_altitude = altitudeRound
             print(f"Altitude: {altitude}")
 
 async def print_flight_mode(drone):
