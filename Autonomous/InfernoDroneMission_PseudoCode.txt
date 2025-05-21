@@ -17,7 +17,7 @@ Launch 1
   {
     Ensure nosecone prop orientation
     Rocket launches
-    if (termination signal received)
+    if (termination signal received or altitude == 350 ft)
     {
       record termination altitude
       deploy airbreak system
@@ -25,7 +25,7 @@ Launch 1
     if (apogee near, determined by velocity (everything going upwards at around 5 mph))
     {
       Droge_Engagement_in_air()
-      while altitude is changing
+      while altitude is changing (pause until drone is just floating)
       {
         wait 3 seconds
         continue
@@ -64,17 +64,15 @@ Launch 1
 
   Fly over rocket 2 (terrain survey)
   {
-    Switch to manual control when drone is close enough to tag center (necessary to engage magnet)
+    Using predetermined gps coordinates
+    Center drone on top of april tag once april tag is found
   }
 
   Drone Precision Landing [parameter - minaltitude]
   {
     Stop descent at minaltitude
-  }
-
-  Drone/rocket magnet engage
-  {
-
+    Land
+    Turn on onboard/manual control so that we can engage the magnet ourselves
   }
 }
 
@@ -82,16 +80,36 @@ Launch 2
 {
   Launch Sequence 2
   {
-
+    Fold drone into nosecone prop orientation
+    Rocket launches
+    if altitude reaches 350 feet
+    {
+      deploy airbreak system
+    }
+    if (apogee near, determined by velocity (everything going upwards at around 5 mph))
+    {
+      Drone_Engagement_in_air()
+      while altitude is changing (pause until drone is just floating)
+      {
+        wait 3 seconds
+        continue
+      }
+      record final altitude
+    }
   }
 
   Dronge Engagement in air 2 
   {
-
+    Enter normal drone prop orientation 
+    Change propeller speed and whatnot depending on current drone velocity. Ensure the drone floats (with the rocket body)
   }
 
-  Descent and Land 2
+  Descent and Land 2 (minaltitude)
   {
+    Use predetermined coordinates if tag not found to find landing circle
+    Descend once centered
+    Stop at minaltitude
+    land super slow (?)
     (Landing needs to be stable. Too fast and the rocket fins will break. Too slow and the rocket is likely to tip over and break the props)
   }
 }
