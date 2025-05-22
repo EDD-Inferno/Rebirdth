@@ -135,7 +135,7 @@ async def run():
 
 ################### Prints before launch 1 #########################
     wait_for_enter()
-    battery_ready = False # TODO: Implement these three ready checks
+    battery_ready = False 
     gyro_ready = False
     magnet_ready = False
     while True:
@@ -155,6 +155,14 @@ async def run():
 
         if battery_ready and gyro_ready and magnet_ready: 
             print("ALL SYSTEMS ARE GOOD")
+        else:
+            if battery.voltage_v > 15.8: 
+                battery_ready = True
+            if gyro.roll_deg < 5 and gyro.pitch_deg < 5:
+                gyro_ready = True
+            if (GPIO.input(MOSFET_PIN)):
+                magnet_ready = True
+            continue
 
         print("############################################################\n")
 
