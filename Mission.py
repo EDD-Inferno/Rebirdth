@@ -6,6 +6,7 @@ from mavsdk.offboard import OffboardError, VelocityBodyYawspeed
 from picamera2 import Picamera2
 import RPi.GPIO as GPIO
 import keyboard
+import socket
 
 from Autonomous import cv_landing_pi
 
@@ -49,7 +50,22 @@ async def observe_is_in_air(drone, running_tasks):
             await asyncio.get_event_loop().shutdown_asyncgens()
             return
 
-async def initDrone():
+async def check_hit_status():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('', 4210))  # listen on port 4210
+    
+    print("Waiting for flag broadcast...")
+
+    while True:
+        data, addr = sock.recvfrom(1024)
+        print(f"Received flag: {data.decode()} from {addr}")
+
+        if data.decode() == "the first tower has been hit" and termination_alt == 0:
+            termination_alt = altitude
+            print(f"Termination signal received. Current alt: {termination_alt}")
+            return
+
+async def connect_drone():
     await drone.connect(system_address="serial:///dev/ttyS0:57600")
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
@@ -61,8 +77,9 @@ async def initDrone():
     print_altitude_task = asyncio.create_task(print_altitude(drone))
     print_flight_mode_task = asyncio.create_task(print_flight_mode(drone))
     print_position = asyncio.create_task(print_position(drone))
+    check_hit_status = asyncio.create_task(check_hit_status())
 
-    running_tasks = [print_altitude_task, print_flight_mode_task, print_position]
+    running_tasks = [print_altitude_task, print_flight_mode_task, print_position, check_hit_status]
     termination_task = asyncio.create_task(observe_is_in_air(drone, running_tasks))
 
     # Wait until the drone is ready to fly
@@ -111,11 +128,9 @@ async def check_vert_vel():
         await asyncio.sleep(0.1)
 
 async def wait_for_enter():
-    enter_pressed = False
     while True:
         if keyboard.is_pressed('enter'):
             print("Enter Key Was Pressed")
-            enter_pressed = True
             break
         await asyncio.sleep(0.1)
 
@@ -124,17 +139,17 @@ async def run():
     # Initialize the drone
     global drone 
     global termination_task
-    global enter_pressed
+    global termination_alt
+    termination_alt = 0
 
     drone = System()
 
     #Turn on Electromagnets
     GPIO.output(MOSFET_PIN, GPIO.HIGH)
 
-    await initDrone()
+    await connect_drone()
 
 ################### Prints before launch 1 #########################
-    wait_for_enter()
     battery_ready = False 
     gyro_ready = False
     magnet_ready = False
@@ -168,21 +183,21 @@ async def run():
         if battery_ready and gyro_ready and magnet_ready: 
             print("ALL SYSTEMS ARE GOOD")
         else:
+            print("Some system not ready")
             await asyncio.sleep(0.5)
             continue
 
         print("############################################################\n")
 
-        if enter_pressed:
+        if keyboard.is_pressed("enter"):
+            print("Enter received")
             break  # Exit after ready to launch
 
         await asyncio.sleep(0.5)
 
 ####################  During Launch 1 #####################################3
-    #       Receive Signal from GroundStation for termination altitude
-    if (False):
-        termination_alt = altitude
-        print(f"Termination signal received. Current alt: {termination_alt}")
+    # Receive Signal from GroundStation for termination altitude
+    # check_hit_status running in parallel already
 
     print("-- Fetching current velocity...")
     await check_vert_vel()
@@ -190,25 +205,28 @@ async def run():
     print("-- ARMING DRONE")
     await armDrone()
 
-    print("-- Wait for a bit")
+    print("-- Hover")
     await drone.offboard.set_velocity_body(
         VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
     await asyncio.sleep(5)
+
+    check_hit_status.cancel()
+    await check_hit_status
 
     print("-- Setting to Hold (GPS Position Mode)")
     await drone.action.set_flight_mode(mavsdk.action.FlightMode.HOLD)
 
     # Fly to drop tag with GPS
-    print("-- Going to target location")
+    print("-- Going to dropoff location")
     await drone.action.goto_location(
-        latitude_deg=0,      # Replace with target lat
-        longitude_deg=0,      # Replace with target lon
-        absolute_altitude_m=200,    # Replace with target absolute altitude (not relative! sea level is 0)
+        latitude_deg=0,      # TODO: Replace with target lat
+        longitude_deg=0,      # TODO: Replace with target lon
+        absolute_altitude_m=200,    # TODO: Replace with target absolute altitude (not relative! sea level is 0)
         yaw_deg=0                     # Set desired heading (yaw)
     )
 
     # Wait for some time or monitor position
-    print("Flying to target...")
+    print("Flying to dropoff...")
     await asyncio.sleep(20)
 
     # Align to Drop location AprilTag
@@ -218,11 +236,22 @@ async def run():
         print(f'ERROR: {e}')
         await drone.action.land()
     
+    print("Press Enter to continue...")
     await wait_for_enter()
     await drone.action.land()
     GPIO.output(MOSFET_PIN, GPIO.LOW)
 
     # GPS To RB2 Apriltag
+    print("-- Going to RB2 location")
+    await drone.action.goto_location(
+        latitude_deg=0,      # TODO: Replace with target lat
+        longitude_deg=0,      # TODO: Replace with target lon
+        absolute_altitude_m=200,    # TODO: Replace with target absolute altitude (not relative! sea level is 0)
+        yaw_deg=0                     # Set desired heading (yaw)
+    )
+    # Wait for some time or monitor position
+    print("Flying to dropoff...")
+    await asyncio.sleep(20)
 
     # Call precision landing routine using computer vision and PID control
     try:
@@ -230,30 +259,95 @@ async def run():
     except Exception as e:
         print(f'ERROR: {e}')
         await drone.action.land()
+    
+    print("Click Enter to continue")
+    await wait_for_enter()
     # Finally, command the drone to land
     print("-- Landing")
     await drone.action.land()
 
-
     ###################### Launch 2 Ready Checks #############################
-    #     Gyro orientation
-    #     Drone connection
-    #     Magnet engagement
-    #     Battery
+    battery_ready = False 
+    gyro_ready = False
+    magnet_ready = False
+    while True:
+        battery = await drone.telemetry.battery()
+        print(f"Battery Voltage: {battery.voltage_v:.2f} V")
+
+        gyro = await drone.telemetry.attitude_euler()
+        print(f"Gyroscope (angular velocity): Roll: {gyro.roll_deg:.2f} deg/s, "
+            f"Pitch: {gyro.pitch_deg:.2f} deg/s, "
+            f"Yaw: {gyro.yaw_deg:.2f} deg/s")
+        
+        print(f"Electromagnet: {GPIO.input(MOSFET_PIN)}")
+        
+        await cv_landing_pi.test_camera()
+
+        print()
+        if battery.voltage_v > 15.8: 
+            battery_ready = True
+        else:
+            battery_ready = False
+        if gyro.roll_deg < 5 and gyro.pitch_deg < 5:
+            gyro_ready = True
+        else:
+            gyro_ready = False
+        if (GPIO.input(MOSFET_PIN)):
+            magnet_ready = True
+        else:
+            magnet_ready = False
+
+        if battery_ready and gyro_ready and magnet_ready: 
+            print("ALL SYSTEMS ARE GOOD")
+        else:
+            print("Some system not ready")
+            await asyncio.sleep(0.5)
+            continue
+
+        print("############################################################\n")
+
+        if keyboard.is_pressed("enter"):
+            print("Enter received")
+            break  # Exit after ready to launch
+
+        await asyncio.sleep(0.5)
 
     ####################  During Launch 2 #####################################3
-    #     if (apogee near, determined by velocity (everything going upwards at around 5 mph))
+    print("-- Fetching current velocity...")
+    await check_vert_vel()
+    
+    print("-- ARMING DRONE")
     await armDrone()
+
+    print("-- Hover")
+    await drone.offboard.set_velocity_body(
+        VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+    await asyncio.sleep(5)
 
     ##################### Descent and Land 2 ####################
     #     GPS Fly to second spot
+    # GPS To RB2 Apriltag
+    print("-- Going to landing location")
+    await drone.action.goto_location(
+        latitude_deg=0,      # TODO: Replace with target lat
+        longitude_deg=0,      # TODO: Replace with target lon
+        absolute_altitude_m=200,    # TODO: Replace with target absolute altitude (not relative! sea level is 0)
+        yaw_deg=0                     # Set desired heading (yaw)
+    )
+    # Wait for some time or monitor position
+    print("Flying to landing...")
+    await asyncio.sleep(20)
+
     try:
         await cv_landing_pi.precision_landing(drone, True)
+        # Stop at minaltitude
     except Exception as e:
         print(f'ERROR: {e}')
         await drone.action.land()
-    #     Stop at minaltitude
-
+    
+    print("Click Enter to continue")
+    await wait_for_enter()
+    
     # Finally, command the drone to land TODO: Check if this landing is slow enough to safely land with rocket
     print("-- Landing")
     await drone.action.land()
