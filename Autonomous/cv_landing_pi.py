@@ -61,6 +61,28 @@ class PID:
         # PID output
         return p + i + d
 
+async def test_camera():
+    # Initialize camera
+    picam2 = Picamera2()
+    picam2.configure(picam2.create_video_configuration())
+    picam2.start()
+
+    # Set up the ArUco detector
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    aruco_params = cv2.aruco.DetectorParameters()
+    detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+    
+    frame = picam2.capture_array()
+    if frame is None:
+        print("Failed to capture frame")
+        return
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Detect ArUco markers in the frame
+    corners, ids, _ = detector.detectMarkers(frame)
+    if corners and len(corners) > 0:
+        print("Marker seen")
+
 # --- Precision Landing Routine ---
 ## alt_threshold 
 async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
@@ -93,6 +115,7 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
     aligned_counter = 0
     required_alignments = 20  # Require several consecutive frames to confirm alignment
     failed_detection_counter = 0
+    failed_count_limit = 10
     iteration = 0
 
     # Parameters for drone descent
@@ -106,7 +129,7 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
     # Original Function: safety_factor * (dist_to_tag + tag_circumradius) * (1 / math.tan(half_camFOV))
     min_altitude_calc_const = safety_factor * safety_factor * tag_circumradius * (1 / math.tan(camFOV / 2.0))
 
-    while True:
+    while failed_detection_counter <= failed_count_limit:
         use_altitude_reading = altitude != None or altitude == 0.0
         # Read frame in a non-blocking way
         frame = picam2.capture_array()
@@ -183,14 +206,14 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
             # If no marker is detected, hover in place before landing
             print("-- No Marker, Hovering")
             await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
-            if (failed_detection_counter == 10):
+            if (failed_detection_counter == failed_count_limit):
                 print("-- No Marker, Landing")
                 await drone.action.land()
             # Optionally show frame as is
             else:
                 failed_detection_counter += 1  
                 print("Failed Detection Counter: " + str(failed_detection_counter))
-        if(iteration % 10 ==0):
+        if(iteration % 10 == 0):
             # Show the frame with detected markers
             cv2.imwrite("~/Rebirdth/Frames/", frame)
         iteration +=1
