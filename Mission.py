@@ -210,12 +210,6 @@ async def run():
         VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
     await asyncio.sleep(5)
 
-    check_hit_status.cancel()
-    await check_hit_status
-
-    print("-- Setting to Hold (GPS Position Mode)")
-    await drone.action.set_flight_mode(mavsdk.action.FlightMode.HOLD)
-
     # Fly to drop tag with GPS
     print("-- Going to dropoff location")
     await drone.action.goto_location(

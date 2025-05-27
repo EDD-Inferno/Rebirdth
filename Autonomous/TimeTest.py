@@ -32,6 +32,7 @@ async def print_battery(drone):
     async for battery in drone.telemetry.battery():
         print(f"Battery Voltage: {battery.voltage_v:.2f} V")
 
+# This version of print_stuff is deprecated. Each print should use async for instead of var = await
 async def print_stuff(drone):
     previous_altitude = None
     while(True):
