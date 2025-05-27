@@ -113,12 +113,12 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
     # Create PID controllers for X and Y axes.
     # NOTE: You must tune these gains based on your system.
     if not(with_rocket): 
-        pid_x = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
-        pid_y = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+        pid_x = PID(kp=0.0025, ki=0.0000, kd=0.000, dt=0.1)
+        pid_y = PID(kp=0.0025, ki=0.0000, kd=0.000, dt=0.1)
         pid_z = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
     else: 
-        pid_x = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
-        pid_y = PID(kp=0.001, ki=0.0000, kd=0.000, dt=0.1)
+        pid_x = PID(kp=0.0025, ki=0.0000, kd=0.000, dt=0.1)
+        pid_y = PID(kp=0.0025, ki=0.0000, kd=0.000, dt=0.1)
         pid_z = PID(kp=0.00025, ki=0.0000, kd=0.000, dt=0.1)
 
    # Threshold in pixels under which we consider the drone to be aligned
@@ -178,10 +178,10 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
             # PID correction outputs (mapping pixel error to m/s command, adjust gains as needed)
             control_x = pid_x.update(error_x)  # Negative sign if image x error is opposite to drone's right movement
             control_y = pid_y.update(error_y)  # Adjust sign based on camera mounting and coordinate frame
-            if use_altitude_reading:
-                control_z = pid_z.update(error_z)  # Adjust sign based on camera mounting and coordinate frame
-            else: 
-                control_z = 0.33
+            # if use_altitude_reading:
+            #     control_z = pid_z.update(error_z)  # Adjust sign based on camera mounting and coordinate frame
+            # else: 
+            control_z = 0.4
 
             print(f'Velocities X: {control_x} Y: {control_y} Z: {control_z}')
             # Draw marker and error information on frame (for debugging)
@@ -216,13 +216,13 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
 
         else:
             # If no marker is detected, hover in place before landing
-            print("-- No Marker, Hovering")
-            await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
-            if (failed_detection_counter == failed_count_limit):
+            if (failed_detection_counter >= failed_count_limit):
                 print("-- No Marker, Landing")
-                await drone.action.land()
+                return
             # Optionally show frame as is
             else:
+                print("-- No Marker, Hovering")
+                await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
                 failed_detection_counter += 1  
                 print("Failed Detection Counter: " + str(failed_detection_counter))
         # if(iteration % 10 == 0):

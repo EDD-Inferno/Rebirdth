@@ -9,7 +9,6 @@ import asyncio
 
 import cv_landing_pi
 
-
 altitude = None
 async def print_altitude(drone):
     previous_altitude = None
