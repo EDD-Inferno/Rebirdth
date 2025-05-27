@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 import cv2
 import numpy as np
 from mavsdk import System
@@ -86,6 +87,17 @@ async def test_camera():
 # --- Precision Landing Routine ---
 ## alt_threshold 
 async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
+    print("-- Setting initial offboard velocities")
+    await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
+    print("-- Starting offboard")
+    try:
+        await drone.offboard.start()
+    except OffboardError as error:
+        print(f"Starting offboard mode failed with error code: {error._result.result}")
+        print("-- Disarming")
+        await drone.action.disarm()
+        return
+
     print("-- Starting precision landing using ArUco marker and PID")
     
     # Initialize camera
@@ -169,18 +181,18 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
             if use_altitude_reading:
                 control_z = pid_z.update(error_z)  # Adjust sign based on camera mounting and coordinate frame
             else: 
-                control_z = 0.0
+                control_z = 0.33
 
             print(f'Velocities X: {control_x} Y: {control_y} Z: {control_z}')
             # Draw marker and error information on frame (for debugging)
-            frame = cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+            # frame = cv2.aruco.drawDetectedMarkers(frame, corners, ids)
             cv2.circle(frame, marker_center, 5, (0, 255, 0), -1)
             cv2.putText(frame, f"ErrX: {error_x:.1f}", (marker_center[0]+10, marker_center[1]),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             cv2.putText(frame, f"ErrY: {error_y:.1f}", (marker_center[0]+10, marker_center[1]+15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            cv2.putText(frame, f"ErrZ: {error_z:.1f}", (altitude, min_altitude),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # cv2.putText(frame, f"ErrZ: {error_z:.1f}", (altitude, min_altitude),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
             # Command the drone with the computed corrections.
             # Here, control_x adjusts forward/backward and control_y adjusts left/right.
@@ -213,10 +225,10 @@ async def precision_landing(drone, with_rocket=False, alt_threshold=0.5):
             else:
                 failed_detection_counter += 1  
                 print("Failed Detection Counter: " + str(failed_detection_counter))
-        if(iteration % 10 == 0):
-            # Show the frame with detected markers
-            cv2.imwrite("~/Rebirdth/Frames/", frame)
-        iteration +=1
+        # if(iteration % 10 == 0):
+        #     # Show the frame with detected markers
+        #     cv2.imwrite("~/Rebirdth/Frames/", frame)
+        # iteration +=1
 
     cv2.destroyAllWindows()
     return
@@ -319,7 +331,7 @@ async def run():
     try:
         await precision_landing(drone)
     except Exception as e:
-        print(f'ERROR: {e}')
+        print(traceback.format_exc())
         drone.action.land()
     # Finally, command the drone to land
     print("-- Landing")
