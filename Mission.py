@@ -11,7 +11,7 @@ import socket
 from Autonomous import cv_landing_pi
 
 #--- GPIO Definitions ---
-MOSFET_PIN = 17 #TODO: put the correct pin #
+MOSFET_PIN = 17
 
 # --- Helper functions for telemetry ---
 altitude = None
@@ -143,6 +143,10 @@ async def run():
     termination_alt = 0
 
     drone = System()
+
+    # Set broadcom (BCM) numbering
+    GPIO.setmode(GPIO.BCM) 
+    GPIO.setup(MOSFET_PIN, GPIO.OUT)
 
     #Turn on Electromagnets
     GPIO.output(MOSFET_PIN, GPIO.HIGH)
